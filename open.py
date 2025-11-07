@@ -1,7 +1,6 @@
 from playwright.sync_api import sync_playwright, TimeoutError
 import time
 import logging
-import os
 
 # Настройка логирования
 logging.basicConfig(
@@ -10,31 +9,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def read_code_from_file(file_path):
-    """Читает код из файла. Возвращает строку или None, если ошибка."""
-    try:
-        if not os.path.exists(file_path):
-            logger.error(f"Файл {file_path} не найден.")
-            return None
-
-        with open(file_path, 'r', encoding='utf-8') as f:
-            code = f.read().strip()
-
-        if not code:
-            logger.error("Файл пуст. Код не найден.")
-            return None
-
-        logger.info(f"Код успешно прочитан из файла: {code}")
-        return code
-
-    except Exception as e:
-        logger.error(f"Ошибка при чтении файла {file_path}: {e}")
-        return None
-
 def automate_redeploy_cycle():
     with sync_playwright() as p:
         # Запускаем браузер
-        browser = p.firefox.launch(headless=True)
+        browser = p.firefox.launch(headless=Tr)
         context = browser.new_context()
 
         try:
@@ -56,7 +34,7 @@ def automate_redeploy_cycle():
                     logger.error("Поле Email не найдено. Пропускаем цикл.")
                     logger.info("Ждём 46 минут до следующего запуска...")
                     time.sleep(2760)
-                    continue
+                    continue  # Переходим к следующему циклу
                 email_input.fill("t84967087@gmail.com")
 
                 login_button = page.get_by_text("Continue with Email", exact=True)
@@ -68,19 +46,14 @@ def automate_redeploy_cycle():
                 login_button.click()
                 page.wait_for_timeout(5000)
 
-                # 2. Ожидание 60 секунд перед чтением кода из файла
-                logger.info("Ждём 60 секунд перед чтением кода из файла...")
-                time.sleep(60)
-
-                # 3. Чтение кода из файла
-                code = read_code_from_file("code.txt")  # Укажите путь к вашему файлу
-                if not code:
-                    logger.warning("Не удалось получить код. Пропускаем цикл.")
+                # Ввод кода
+                user_code = input("Введите код для подтверждения (или нажмите Enter, чтобы пропустить): ").strip()
+                if not user_code:
+                    logger.warning("Код не введён. Пропускаем цикл.")
                     logger.info("Ждём 46 минут до следующего запуска...")
                     time.sleep(2760)
                     continue
 
-                # 4. Ввод кода
                 visible_inputs = page.query_selector_all("input:visible")
                 if not visible_inputs:
                     logger.error("Нет видимых полей ввода. Пропускаем цикл.")
@@ -92,19 +65,18 @@ def automate_redeploy_cycle():
                     visible_inputs,
                     key=lambda el: el.bounding_box()["x"] if el.bounding_box() else float("inf")
                 )
-                leftmost_input.fill(code)
+                leftmost_input.fill(user_code)
                 page.wait_for_timeout(3000)
 
                 logger.info("Вход выполнен успешно")
 
-                # 5. Ожидание 60 секунд после входа
+                # 2. Ожидание 60 секунд после входа
                 logger.info("Ожидание 60 секунд после входа...")
                 time.sleep(60)
 
-                # 6. Клик по первой кнопке Redeploy
+                # 3. Клик по первой кнопке Redeploy
                 logger.info("Ищем первую кнопку Redeploy...")
                 first_button = page.get_by_role("button", name="Redeploy")
-
 
                 try:
                     first_button.wait_for(timeout=30000, state="visible")
@@ -114,7 +86,7 @@ def automate_redeploy_cycle():
                     logger.error(f"Первая кнопка Redeploy не найдена или недоступна: {e}")
                     logger.info("Пропускаем клик по первой кнопке, переходим к поиску второй кнопки...")
 
-                # 7. Клик по второй кнопке в модальном окне
+                # 4. Клик по второй кнопке в модальном окне
                 logger.info("Ищем кнопку в модальном окне (data-testid='redeploy-modal/redeploy-button')...")
                 second_button = page.locator('[data-testid="redeploy-modal/redeploy-button"]')
 
@@ -128,7 +100,7 @@ def automate_redeploy_cycle():
                     modal_buttons = page.locator('[data-testid^="redeploy-modal"]').all_inner_texts()
                     logger.info(f"Кнопки в модальном окне: {modal_buttons}")
 
-                # 8. Успешное завершение цикла или пропуск
+                # 5. Успешное завершение цикла или пропуск
                 logger.info("Цикл выполнен (частично или полностью). Ждём 46 минут до следующего запуска...")
                 time.sleep(2760)
 
